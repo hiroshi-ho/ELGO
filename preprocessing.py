@@ -67,11 +67,6 @@ def GOprocessor(go_obo_filepath):
 
     return GO_json, another_tag
 
-def Genetag_file_parser():
-    return None
-
-def MedMentions_file_parser():
-    return None
 
 def all_definition_getter_from_ontology(go_jsonpath):
     definition_sentence_list = list()
@@ -152,6 +147,10 @@ def when_you_input_one_wordsplited_sentence_then_return_one_intnized_sentence_an
 
     return intnized_sentence, intnized_char_sentence
 
+
+class PubtatorFormat_parser():
+    def __init__(self,pubtator_file_filepath):
+        self.pubtator_file_filepath = pubtator_file_filepath
 
 
 
