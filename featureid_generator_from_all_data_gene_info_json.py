@@ -229,8 +229,8 @@ if __name__ == '__main__':
 
     ### model params
     BATCH_SIZE = 100
-    LR = 0.01
-    EPOCH_NUM = 20
+    LR = 0.5
+    EPOCH_NUM = 200
     ### model params end
 
     with open(FEATURE_ID_SORTED_DICT_PATH,'rb') as FISD:
@@ -263,8 +263,8 @@ if __name__ == '__main__':
 
     # dump
     print("Dump start")
-    # torch.save(train_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TRAIN_TENSOR_DATASET)
-    # torch.save(test_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TEST_TENSOR_DATASET)
+    torch.save(train_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TRAIN_TENSOR_DATASET)
+    torch.save(test_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TEST_TENSOR_DATASET)
     print("Dump skipped")
 
     # model
@@ -304,7 +304,7 @@ if __name__ == '__main__':
             optimizer.step()
             loss_sum += loss.data
             batch_tot += BATCH_SIZE
-            if batch_tot % 200 == 0:
+            if batch_tot % 400 == 0:
                 print(batch_tot,'trained')
 
         epoch_list.append(epoch+1)
@@ -317,6 +317,8 @@ if __name__ == '__main__':
         test_loss = test_loss_evaluator(model=model,
                                         test_one_by_one_vector_set=test_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,
                                         batch_num=BATCH_SIZE)
+
+        print("test loss", test_loss)
         test_loss_list.append(test_loss)
         t2 = time.time()
 
@@ -327,3 +329,10 @@ if __name__ == '__main__':
         logger(logger_path=LOG_FILE,epoch=epoch+1,one_epoch_time=time_for_one_epoch,train_loss=loss_sum / (len(batch_index_list_of_list) * BATCH_SIZE),
                test_loss=test_loss)
     torch.save(model.state_dict(),MODEL_FILEPATH)
+
+    Loss_json_path = './model_data/record.pkl'
+    with open(Loss_json_path,'wb') as Ljp:
+        pickle.dump({"epoch list":epoch_list,
+                     "train loss list":train_loss_list,
+                     "test loss lost":test_loss_list},
+                    Ljp)
