@@ -240,16 +240,16 @@ if __name__ == '__main__':
 
     # dump
     print("Dump start")
-    # torch.save(train_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TRAIN_TENSOR_DATASET)
-    # torch.save(test_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TEST_TENSOR_DATASET)
-    print("Dumped skipped")
+    torch.save(train_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TRAIN_TENSOR_DATASET)
+    torch.save(test_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TEST_TENSOR_DATASET)
+    print("Dumped")
 
     # model
     model = AffineLearner(vec_dim_init_batched=MAX_FEATURE,
                           vec_dim_projected_batched=MAX_FEATURE,
                           batch_size=BATCH_SIZE)
 
-    model = model.cuda()
+    model = model.to(device=device)
     loss_function = nn.NLLLoss()
     optimizer = optim.SGD(model.parameters(),lr=LR)
 
