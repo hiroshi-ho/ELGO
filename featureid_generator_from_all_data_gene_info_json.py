@@ -115,6 +115,7 @@ def batch_index_list_list_loader(train_or_test_one_by_one_vector_set,batch_num):
 
     sub_list = list()
     for i in shuffle_index_list:
+        sub_list.append(i)
         if len(sub_list) % batch_num == 0 :
             batched_index_list_list.append(sub_list)
             sub_list = list()
@@ -129,6 +130,10 @@ def one_batch_loader(one_indexes_of_batch,one_tensor_from_text_and_tensor_from_c
         batched_tensor_from_text.append(one_tensor_from_text_and_tensor_from_correct_gene_set[idx][0])
         batched_tensor_from_correct_gene.append(one_tensor_from_text_and_tensor_from_correct_gene_set[idx][1])
 
+
+    print(batched_tensor_from_text,batched_tensor_from_correct_gene)
+    print(one_indexes_of_batch)
+    print(len(one_tensor_from_text_and_tensor_from_correct_gene_set))
     return torch.LongTensor(batched_tensor_from_text).to(device), torch.LongTensor(batched_tensor_from_correct_gene).to(device)
 ### batch loader end
 
@@ -139,9 +144,10 @@ class AffineLearner(nn.Module):
         super(AffineLearner,self).__init__()
         self.batch_size = batch_size
         self.fc = nn.Linear(vec_dim_init_batched,vec_dim_projected_batched)
+        self.feature_vec_dim = vec_dim_init_batched
 
     def forward(self, to_be_projected_vector):
-        projected = self.fc(to_be_projected_vector)
+        projected = self.fc(to_be_projected_vector.float()).float()
         return projected
 
     def loss_custom(self,projected_tensor_from_Pubtator_Text_batched,correct_text_tensor_batched):
@@ -240,9 +246,9 @@ if __name__ == '__main__':
 
     # dump
     print("Dump start")
-    torch.save(train_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TRAIN_TENSOR_DATASET)
-    torch.save(test_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TEST_TENSOR_DATASET)
-    print("Dumped")
+    # torch.save(train_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TRAIN_TENSOR_DATASET)
+    # torch.save(test_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TEST_TENSOR_DATASET)
+    print("Dump skipped")
 
     # model
     model = AffineLearner(vec_dim_init_batched=MAX_FEATURE,
@@ -250,7 +256,7 @@ if __name__ == '__main__':
                           batch_size=BATCH_SIZE)
 
     model = model.to(device=device)
-    loss_function = nn.NLLLoss()
+    # loss_function = nn.MSELoss() # L1Loss?
     optimizer = optim.SGD(model.parameters(),lr=LR)
 
     epoch_list = []
@@ -268,6 +274,7 @@ if __name__ == '__main__':
         for idx, one_index_list in enumerate(batch_index_list_of_list):
             model.train()
             optimizer.zero_grad()
+
 
             wrapped_train_tensor_set_from_pupator_text, wrapped_train_tensor_set_from_Entrez_gene = one_batch_loader(one_indexes_of_batch=one_index_list,
                                                                                                                      one_tensor_from_text_and_tensor_from_correct_gene_set=train_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list)
