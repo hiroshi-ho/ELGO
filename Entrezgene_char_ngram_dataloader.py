@@ -128,7 +128,6 @@ if __name__ == '__main__':
     feature_id = make_feature_id_dict(ngram_list_list=make_feature_ngram_list_list_from_raw_data(train_data_filepath=train_Data_filepath,
                                                                                                  Entrez_gene_id2rawgene_json_filepath=Entrez_gene_id2rawgene_json_filepath)
                                       )
-    exit()
     with open(feature_id_dumped_path,'wb') as fid:
         pickle.dump(feature_id,fid)
 

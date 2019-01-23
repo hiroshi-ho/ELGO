@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import time
+import time, math
 import numpy as np
 from torch.autograd import Variable
 
@@ -16,13 +16,23 @@ def make_ngram_from_Entrez_gene_ontology(max_feature,ngram_minnum,ngram_maxnum,E
 
     feature_ngram_id = {}
 
+
+    feature_generated_process = 0
+
     for one_gene in Gene_id_and_Gene_json.values():
         ngram_feature_list = ngram_char_bow_returner(one_Entrez_gene_raw_name=one_gene,ngram_minnum=ngram_minnum,ngrammax_num=ngram_maxnum)
+
+
         for one_feature in ngram_feature_list:
             if one_feature in feature_ngram_id:
                 feature_ngram_id[one_feature] +=1
             else:
                 feature_ngram_id[one_feature] = 1
+
+        feature_generated_process += 1
+        progress_percent = math.floor(feature_generated_process / len(Gene_id_and_Gene_json))
+        if int(progress_percent) % 5 == 0:
+            print('feature generation process %:',progress_percent)
 
     sorted_feature_ngram_id = sorted(feature_ngram_id.items(), key=lambda x: -x[1])[0:max_feature]
     return sorted_feature_ngram_id
@@ -52,7 +62,7 @@ def make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text,ngram
 
     # scipy to numpy
     # https://stackoverflow.com/questions/26576524/how-do-i-transform-a-scipy-sparse-matrix-to-a-numpy-matrix
-    return vector.todense()
+    return torch.tensor(vector.todense()).view(-1).squeeze().numpy()
 
 def tensor_set_maker(feature_id_dict,ngram_minnum,ngram_maxnum,train_or_test_dataset_pkl_path,Entrez_gene_ontology_json_path):
     vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list = [] # [[vec_from_text,vec_from_Entrez_gene_id],[...]...]
@@ -76,7 +86,7 @@ def tensor_set_maker(feature_id_dict,ngram_minnum,ngram_maxnum,train_or_test_dat
                                                                                         ngram_maxnum=ngram_maxnum,
                                                                                         feature_id_default_dict=feature_id_dict)
 
-            vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list.append([torch.LongTensor(vector_in_text_in_Pubtator).to(device),torch.LongTensor(vector_in_Entrez_gene).to(device)])
+            vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list.append([vector_in_text_in_Pubtator,vector_in_Entrez_gene])
 
     return vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list
 
@@ -98,7 +108,7 @@ def Entrez_gene_text_id_and_tensor_set(ngram_minnum,ngram_maxnum,feature_id_dict
 
     for Entrez_gene_id, gene_itself in Entrez_gene_id_json.items():
         id_list.append(Entrez_gene_id)
-        tensor_list_of_gene.append(torch.LongTensor(make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text=gene_itself,
+        tensor_list_of_gene.append(torch.tensor(make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text=gene_itself,
                                                                                                      ngram_minnum=ngram_minnum,
                                                                                 ngram_maxnum=ngram_maxnum,
                                                                                 feature_id_default_dict=feature_id_dict
@@ -131,10 +141,9 @@ def one_batch_loader(one_indexes_of_batch,one_tensor_from_text_and_tensor_from_c
         batched_tensor_from_correct_gene.append(one_tensor_from_text_and_tensor_from_correct_gene_set[idx][1])
 
 
-    print(batched_tensor_from_text,batched_tensor_from_correct_gene)
-    print(one_indexes_of_batch)
-    print(len(one_tensor_from_text_and_tensor_from_correct_gene_set))
-    return torch.LongTensor(batched_tensor_from_text).to(device), torch.LongTensor(batched_tensor_from_correct_gene).to(device)
+    # print(batched_tensor_from_text,batched_tensor_from_correct_gene)
+    # print(batched_tensor_from_text)
+    return torch.tensor(batched_tensor_from_text).to(device), torch.tensor(batched_tensor_from_correct_gene).to(device)
 ### batch loader end
 
 ### Linear Projection model
@@ -151,8 +160,10 @@ class AffineLearner(nn.Module):
         return projected
 
     def loss_custom(self,projected_tensor_from_Pubtator_Text_batched,correct_text_tensor_batched):
-        correct_text_tensor_batched.view(self.batch_size,-1,1)
-        ce_loss = - torch.bmm(projected_tensor_from_Pubtator_Text_batched,correct_text_tensor_batched)
+        # https://pytorch.org/docs/stable/torch.html?highlight=torch%20bmm#torch.bmm
+        projected_tensor_from_Pubtator_Text_batched = projected_tensor_from_Pubtator_Text_batched.view(self.batch_size,1,-1).float()
+        correct_text_tensor_batched = correct_text_tensor_batched.view(self.batch_size,-1,1).float()
+        ce_loss = - torch.sum(torch.bmm(projected_tensor_from_Pubtator_Text_batched,correct_text_tensor_batched)).float()
 
         return ce_loss
 
@@ -181,24 +192,30 @@ def logger(logger_path,epoch,one_epoch_time,train_loss,test_loss):
 
 
 if __name__ == '__main__':
-    '''
+    NGRAM_MINNUM = 2
+    NGRAM_MAXNUM = 3
+    MAX_FEATURE = 10000
+    FEATURE_ID_SORTED_DICT_PATH = './dataset_dir/feature_from_ontology_feature_10000.pkl'
     Entrez_gene_ontology_json_filepath = './dataset_dir/All_Data.gene_info.json'
-    Sorted_feature_ngram_id = make_ngram_from_Entrez_gene_ontology(max_feature=MAX_FEATURE,
-                                                                   ngram_maxnum=NGRAM_MAXNUM,
-                                                                   Entrez_gene_ontology_json_filepath=Entrez_gene_ontology_json_filepath)
-    with open('./dataset_dir/feature_from_ontology_feature_300000.pkl','wb') as ffop:
-        pickle.dump(Sorted_feature_ngram_id,ffop)
-    '''
+
+
+
+    ## when feature is already exist, just commentout
+    # Sorted_feature_ngram_id = make_ngram_from_Entrez_gene_ontology(max_feature=MAX_FEATURE,
+    #                                                                ngram_minnum=NGRAM_MINNUM,
+    #                                                                ngram_maxnum=NGRAM_MAXNUM,
+    #                                                                Entrez_gene_ontology_json_filepath=Entrez_gene_ontology_json_filepath)
+    #
+    # with open(FEATURE_ID_SORTED_DICT_PATH,'wb') as ffop:
+    #     pickle.dump(Sorted_feature_ngram_id,ffop)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # filepath
-    NGRAM_MINNUM = 2
-    NGRAM_MAXNUM = 3
-    MAX_FEATURE = 1000
+
     TRAIN_DATASET_PKL = './dataset_dir/BC2GNtrain_gene.pkl'
     TEST_DATASET_PKL = './dataset_dir/BC2GNtest_gene.pkl'
-    FEATURE_ID_SORTED_DICT_PATH = './dataset_dir/feature_from_ontology_feature_300000.pkl'
+
     ENTREZ_GENE_ID_JSON = './dataset_dir/All_Data.gene_info.json'
 
     TRAIN_TENSOR_DATASET = './model_data/train_tensor_dataset.pkl'
@@ -271,8 +288,10 @@ if __name__ == '__main__':
         loss_sum = 0
         batch_tot = 0
 
+        print('train epoch',epoch + 1)
         for idx, one_index_list in enumerate(batch_index_list_of_list):
             model.train()
+
             optimizer.zero_grad()
 
 
@@ -281,7 +300,7 @@ if __name__ == '__main__':
             projected_by_model_tensor_batched = model(wrapped_train_tensor_set_from_pupator_text)
             loss = model.loss_custom(projected_tensor_from_Pubtator_Text_batched=projected_by_model_tensor_batched,
                                      correct_text_tensor_batched=wrapped_train_tensor_set_from_Entrez_gene)
-            loss.backword()
+            loss.backward()
             optimizer.step()
             loss_sum += loss.data
             batch_tot += BATCH_SIZE
