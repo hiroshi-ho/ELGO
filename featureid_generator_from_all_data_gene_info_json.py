@@ -1,8 +1,13 @@
-import json,pickle,scipy, numpy
+import json,pickle,scipy, numpy, random
 from collections import defaultdict
 from Entrezgene_char_ngram_dataloader import ngram_char_bow_returner
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+import time
+import numpy as np
+from torch.autograd import Variable
 
 def make_ngram_from_Entrez_gene_ontology(max_feature,ngram_maxnum,Entrez_gene_ontology_json_filepath):
     with open(Entrez_gene_ontology_json_filepath,'r') as Eg:
@@ -45,13 +50,13 @@ def make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text,ngram
     # http://techeten.xyz/1004
     return vector
 
-def train_dataset_maker(feature_id_dict,ngram_maxnum,train_dataset_pkl,Entrez_gene_ontology_json_path):
+def tensor_set_maker(feature_id_dict,ngram_maxnum,train_or_test_dataset_pkl_path,Entrez_gene_ontology_json_path):
     vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list = [] # [[vec_from_text,vec_from_Entrez_gene_id],[...]...]
 
     with open(Entrez_gene_ontology_json_path,'r') as Egoj:
         Entrez_gene_ontology_json = json.load(Egoj)
 
-    with open(train_dataset_pkl,'rb') as tdp:
+    with open(train_or_test_dataset_pkl_path,'rb') as tdp:
         train_gene_in_pubtator_and_correct_set_list = pickle.load(tdp)
         for one_set in train_gene_in_pubtator_and_correct_set_list:
             gene_text_in_Pubtator = one_set[0]
@@ -86,49 +91,106 @@ def Entrez_gene_text_id_and_tensor_set(ngram_maxnum,feature_id_dict,Entrez_gene_
 
     return id_list, tensor_list_of_gene
 
-def test_dataset_loader(test_dataset_which_contains_list_of_list_which_has_one_gene_text_and_correct_gene_id,
-                                               gene_in_Entrez_ontology_json_path,
-                                               feature_id_dict):
+### batch loader for train and text
+def batch_index_list_list_loader(train_or_test_one_by_one_vector_set,batch_num):
+    batched_index_list_list = list()
+    maxindex = len(train_or_test_one_by_one_vector_set)
+    index_list = [i for i in range(maxindex)]
+    shuffle_index_list = random.sample(index_list,len(index_list))
 
+    sub_list = list()
+    for i in shuffle_index_list:
+        if len(sub_list) % batch_num == 0 :
+            batched_index_list_list.append(sub_list)
+            sub_list = list()
 
+    return batched_index_list_list
 
-    return
+def one_batch_loader(one_indexes_of_batch,one_tensor_from_text_and_tensor_from_correct_gene_set):
+    batched_tensor_from_text = list()
+    batched_tensor_from_correct_gene = list()
 
+    for idx in one_indexes_of_batch:
+        batched_tensor_from_text.append(one_tensor_from_text_and_tensor_from_correct_gene_set[idx][0])
+        batched_tensor_from_correct_gene.append(one_tensor_from_text_and_tensor_from_correct_gene_set[idx][1])
 
+    return torch.tensor(batched_tensor_from_text), torch.tensor(batched_tensor_from_correct_gene)
+### batch loader end
 
-class AffineLearner_nobatch(nn.Module):
+### Linear Projection model
+class AffineLearner(nn.Module):
 
-    def __init__(self,vec_dim_init,vec_dim_projected):
-        super(AffineLearner_nobatch,self).__init__()
-        self.fc = nn.Linear(vec_dim_init,vec_dim_projected)
+    def __init__(self,vec_dim_init_batched,vec_dim_projected_batched,batch_size):
+        super(AffineLearner,self).__init__()
+        self.batch_size = batch_size
+        self.fc = nn.Linear(vec_dim_init_batched,vec_dim_projected_batched)
 
     def forward(self, to_be_projected_vector):
         projected = self.fc(to_be_projected_vector)
         return projected
 
-    def loss_custom(self,projected_tensor_from_Pubtator_Text,correct_text_tensor):
-        ce_loss = - torch.dot
+    def loss_custom(self,projected_tensor_from_Pubtator_Text_batched,correct_text_tensor_batched):
+        correct_text_tensor_batched.view(self.batch_size,-1,1)
+        ce_loss = - torch.bmm(projected_tensor_from_Pubtator_Text_batched,correct_text_tensor_batched)
 
+        return ce_loss
+
+def test_loss_evaluator(model,test_one_by_one_vector_set,batch_num):
+    model.eval()
+    test_batch_index_list_of_list = batch_index_list_list_loader(train_or_test_one_by_one_vector_set=test_one_by_one_vector_set,
+                                                                 batch_num=batch_num)
+    test_loss_sum = list()
+
+    for idx, one_test_batch_index_list in enumerate(test_batch_index_list_of_list):
+        wrapped_test_tensor_set_from_pupator_text, wrapped_test_tensor_set_from_Entrez_gene = one_batch_loader(
+            one_indexes_of_batch=one_test_batch_index_list,
+            one_tensor_from_text_and_tensor_from_correct_gene_set=test_one_by_one_vector_set)
+
+        test_batched_projected_vectors = model(wrapped_test_tensor_set_from_pupator_text)
+        loss_for_test_batch = model.loss_custom(projected_tensor_from_Pubtator_Text_batched=test_batched_projected_vectors,
+                                                correct_text_tensor_batched=wrapped_test_tensor_set_from_Entrez_gene)
+        test_loss_sum.append(loss_for_test_batch.data[0].cpu().numpy())
+
+    return np.mean(test_loss_sum)
+
+def logger(logger_path,epoch,one_epoch_time,train_loss,test_loss):
+    with open(logger_path,'a') as logf:
+        written_str = "epoch " + str(epoch) + " train loss: " + str(train_loss) + ' test loss: ' + str(test_loss) + ' epoch time: ' + str(round(one_epoch_time,2))  + '\n'
+        logf.write(written_str)
 
 
 if __name__ == '__main__':
     '''
-    
-    MAX_FEATURE = 300000
-    NGRAM_MAXNUM = 5
     Entrez_gene_ontology_json_filepath = './dataset_dir/All_Data.gene_info.json'
-
     Sorted_feature_ngram_id = make_ngram_from_Entrez_gene_ontology(max_feature=MAX_FEATURE,
                                                                    ngram_maxnum=NGRAM_MAXNUM,
                                                                    Entrez_gene_ontology_json_filepath=Entrez_gene_ontology_json_filepath)
     with open('./dataset_dir/feature_from_ontology_feature_300000.pkl','wb') as ffop:
         pickle.dump(Sorted_feature_ngram_id,ffop)
-    
     '''
+
+    # filepath
     NGRAM_MAXNUM = 5
-    TRAIN_DATASET_PKL = './dataset_dir/train_dataset_tensorset.pkl'
+    MAX_FEATURE = 300000
+    TRAIN_DATASET_PKL = './dataset_dir/BC2GNtrain_gene.pkl'
+    TEST_DATASET_PKL = './dataset_dir/BC2GNtest_gene.pkl'
     FEATURE_ID_SORTED_DICT_PATH = './dataset_dir/feature_from_ontology_feature_300000.pkl'
     ENTREZ_GENE_ID_JSON = './dataset_dir/All_Data.gene_info.json'
+
+    TRAIN_TENSOR_DATASET = './model_data/train_tensor_dataset.pkl'
+    TEST_TENSOR_DATASET = './model_data/test_tensor_dataset.pkl'
+    FEATURE_ID_DEFAULT_DICT = './model_data/feature_id_default_dict.pkl'
+    ONTOLOGY_ID_LIST = './model_data/ontology_id_list.pkl'
+    ONTOLOGY_TENSOR_LIST_OF_GENE = './model_data/onotology_tensor_list_of_gene.pkl'
+
+    LOG_FILE = './model_data/logs.log'
+    MODEL_FILEPATH = './model_data/model.model'
+
+    ### model params
+    BATCH_SIZE = 30
+    LR = 0.5
+    EPOCH_NUM = 100
+    ### model params end
 
     with open(FEATURE_ID_SORTED_DICT_PATH,'rb') as FISD:
         sorted_feature_id_set_list = pickle.load(FISD)
@@ -136,11 +198,85 @@ if __name__ == '__main__':
     feature_id_default_dict = make_feature_id_dict_from_sorted_feature_ngram_id(sorted_feature_id=sorted_feature_id_set_list)
 
     # train tensor dataset
-    vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list = train_dataset_maker(feature_id_dict=feature_id_default_dict,
+    train_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list = tensor_set_maker(feature_id_dict=feature_id_default_dict,
                                                                                                     ngram_maxnum=NGRAM_MAXNUM,
-                                                                                                    train_dataset_pkl=TRAIN_DATASET_PKL,
+                                                                                                    train_or_test_dataset_pkl_path=TRAIN_DATASET_PKL,
                                                                                                     Entrez_gene_ontology_json_path=ENTREZ_GENE_ID_JSON)
+
+    # test tensor dataset
+    test_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list = tensor_set_maker(feature_id_dict=feature_id_default_dict,
+                                                                                                    ngram_maxnum=NGRAM_MAXNUM,
+                                                                                                    train_or_test_dataset_pkl_path=TEST_DATASET_PKL,
+                                                                                                    Entrez_gene_ontology_json_path=ENTREZ_GENE_ID_JSON)
+
     # loaded for test validation
     ontology_id_list, ontology_tensor_list_of_gene = Entrez_gene_text_id_and_tensor_set(ngram_maxnum=NGRAM_MAXNUM,
                                                                                         feature_id_dict=feature_id_default_dict,
                                                                                         Entrez_gene_id_json_path=ENTREZ_GENE_ID_JSON)
+
+    # dump
+    with open(FEATURE_ID_DEFAULT_DICT,'wb') as FIDD, open(TRAIN_TENSOR_DATASET,'wb') as TTD, open(TEST_TENSOR_DATASET,'wb') as TestTD, open(ONTOLOGY_ID_LIST,'wb') as OIL, open(ONTOLOGY_TENSOR_LIST_OF_GENE,'wb') as OTLOG:
+        pickle.dump(feature_id_default_dict,FIDD)
+        pickle.dump(train_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TTD)
+        pickle.dump(test_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TestTD)
+        pickle.dump(ontology_id_list,OIL)
+        pickle.dump(ontology_tensor_list_of_gene, OTLOG)
+
+    # model
+    model = AffineLearner(vec_dim_init_batched=MAX_FEATURE,
+                          vec_dim_projected_batched=MAX_FEATURE,
+                          batch_size=BATCH_SIZE)
+
+    model = model.cuda()
+    loss_function = nn.NLLLoss()
+    optimizer = optim.SGD(model.parameters(),lr=LR)
+
+    epoch_list = []
+    test_loss_list = []
+    train_loss_list = []
+
+    for epoch in range(EPOCH_NUM):
+
+        t1 = time.time()
+        batch_index_list_of_list = batch_index_list_list_loader(train_or_test_one_by_one_vector_set=train_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,
+                                                                batch_num=BATCH_SIZE)
+        loss_sum = 0
+        batch_tot = 0
+
+        for idx, one_index_list in enumerate(batch_index_list_of_list):
+            model.train()
+            optimizer.zero_grad()
+
+            wrapped_train_tensor_set_from_pupator_text, wrapped_train_tensor_set_from_Entrez_gene = one_batch_loader(one_indexes_of_batch=one_index_list,
+                                                                                                                     one_tensor_from_text_and_tensor_from_correct_gene_set=train_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list)
+            projected_by_model_tensor_batched = model(wrapped_train_tensor_set_from_pupator_text)
+            loss = model.loss_custom(projected_tensor_from_Pubtator_Text_batched=projected_by_model_tensor_batched,
+                                     correct_text_tensor_batched=wrapped_train_tensor_set_from_Entrez_gene)
+            loss.backword()
+            optimizer.step()
+            loss_sum += loss.data
+            batch_tot += BATCH_SIZE
+            if batch_tot % 200 == 0:
+                print(batch_tot,'trained')
+
+        epoch_list.append(epoch+1)
+        train_loss_list.append(loss_sum / len(batch_index_list_of_list) * BATCH_SIZE)
+        print("epoch",epoch + 1)
+        print("train_loss", loss_sum / (len(batch_index_list_of_list) * BATCH_SIZE))
+
+        ## test_loss_evaluation
+        model.eval()
+        test_loss = test_loss_evaluator(model=model,
+                                        test_one_by_one_vector_set=test_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,
+                                        batch_num=BATCH_SIZE)
+        test_loss_list.append(test_loss)
+        t2 = time.time()
+
+        # logger
+        time_for_one_epoch = t2 - t1
+        one_epoch_train_loss = loss_sum / len(batch_index_list_of_list) * BATCH_SIZE
+        one_epoch_test_loss = test_loss
+        logger(logger_path=LOG_FILE,one_epoch_time=time_for_one_epoch,train_loss=loss_sum / (len(batch_index_list_of_list) * BATCH_SIZE),
+               test_loss=test_loss)
+    torch.save(model.state_dict(),MODEL_FILEPATH)
+
