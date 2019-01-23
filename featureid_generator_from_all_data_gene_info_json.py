@@ -2,6 +2,7 @@ import json,pickle,scipy, numpy
 from collections import defaultdict
 from Entrezgene_char_ngram_dataloader import ngram_char_bow_returner
 import torch
+import torch.nn as nn
 
 def make_ngram_from_Entrez_gene_ontology(max_feature,ngram_maxnum,Entrez_gene_ontology_json_filepath):
     with open(Entrez_gene_ontology_json_filepath,'r') as Eg:
@@ -68,14 +69,45 @@ def train_dataset_maker(feature_id_dict,ngram_maxnum,train_dataset_pkl,Entrez_ge
 
     return vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list
 
-def Entrez_gene_text_picklizer(ngram_maxnum,feature_id_dict,Entrez_gene_id_json_path):
-    return
+def Entrez_gene_text_id_and_tensor_set(ngram_maxnum,feature_id_dict,Entrez_gene_id_json_path):
 
-def ontology_dataset_loader_for_test_evaluator(test_dataset_which_contains_list_of_list_which_has_one_gene_text_and_correct_gene_id,
+    tensor_list_of_gene = list()
+    id_list = list()
+
+    with open(Entrez_gene_id_json_path, 'r') as EGij:
+        Entrez_gene_id_json = json.load(EGij)
+
+    for Entrez_gene_id, gene_itself in Entrez_gene_id_json.items():
+        id_list.append(Entrez_gene_id)
+        tensor_list_of_gene.append(torch.tensor(make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text=gene_itself,
+                                                                                ngram_maxnum=ngram_maxnum,
+                                                                                feature_id_default_dict=feature_id_dict
+                                                                                )))
+
+    return id_list, tensor_list_of_gene
+
+def test_dataset_loader(test_dataset_which_contains_list_of_list_which_has_one_gene_text_and_correct_gene_id,
                                                gene_in_Entrez_ontology_json_path,
-                                               pickled_Entrez_gene_vector_path):
+                                               feature_id_dict):
+
+
+
     return
 
+
+
+class AffineLearner_nobatch(nn.Module):
+
+    def __init__(self,vec_dim_init,vec_dim_projected):
+        super(AffineLearner_nobatch,self).__init__()
+        self.fc = nn.Linear(vec_dim_init,vec_dim_projected)
+
+    def forward(self, to_be_projected_vector):
+        projected = self.fc(to_be_projected_vector)
+        return projected
+
+    def loss_custom(self,projected_tensor_from_Pubtator_Text,correct_text_tensor):
+        ce_loss = - torch.dot
 
 
 
@@ -93,9 +125,22 @@ if __name__ == '__main__':
         pickle.dump(Sorted_feature_ngram_id,ffop)
     
     '''
+    NGRAM_MAXNUM = 5
+    TRAIN_DATASET_PKL = './dataset_dir/train_dataset_tensorset.pkl'
     FEATURE_ID_SORTED_DICT_PATH = './dataset_dir/feature_from_ontology_feature_300000.pkl'
+    ENTREZ_GENE_ID_JSON = './dataset_dir/All_Data.gene_info.json'
+
     with open(FEATURE_ID_SORTED_DICT_PATH,'rb') as FISD:
         sorted_feature_id_set_list = pickle.load(FISD)
 
     feature_id_default_dict = make_feature_id_dict_from_sorted_feature_ngram_id(sorted_feature_id=sorted_feature_id_set_list)
 
+    # train tensor dataset
+    vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list = train_dataset_maker(feature_id_dict=feature_id_default_dict,
+                                                                                                    ngram_maxnum=NGRAM_MAXNUM,
+                                                                                                    train_dataset_pkl=TRAIN_DATASET_PKL,
+                                                                                                    Entrez_gene_ontology_json_path=ENTREZ_GENE_ID_JSON)
+    # loaded for test validation
+    ontology_id_list, ontology_tensor_list_of_gene = Entrez_gene_text_id_and_tensor_set(ngram_maxnum=NGRAM_MAXNUM,
+                                                                                        feature_id_dict=feature_id_default_dict,
+                                                                                        Entrez_gene_id_json_path=ENTREZ_GENE_ID_JSON)
