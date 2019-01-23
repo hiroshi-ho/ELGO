@@ -1,28 +1,9 @@
-import os
-import dill
-import numpy
 import json
-import sklearn
-import regex
-import scipy
 import re
-from collections import defaultdict
-from sklearn.externals import joblib
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.svm import SVC
-import MeCab
-import subprocess
 import pickle
-import codecs
-from sklearn.metrics import accuracy_score, precision_score, recall_score, make_scorer, f1_score
-from sklearn.model_selection import cross_val_score
-from sklearn.metrics import classification_report
-from sklearn.preprocessing import MultiLabelBinarizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.multiclass import OneVsRestClassifier
 
 def Taxid_remover(one_gene_id_in_Pubtator):
-    new_id = re.sub(pattern='\(Tax:.*',repl='',string=one_gene_id_in_Pubtator)
+    new_id = re.sub('\(Tax:.*','',one_gene_id_in_Pubtator)
     new_id = new_id.replace('()','')
 
     return new_id

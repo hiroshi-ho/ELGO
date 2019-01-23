@@ -1,4 +1,5 @@
-import json,pickle,scipy, numpy, random
+import json,pickle,scipy.sparse, numpy, random
+import scipy as sp
 from collections import defaultdict
 from Entrezgene_char_ngram_dataloader import ngram_char_bow_returner
 import torch
@@ -41,14 +42,17 @@ def make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text,ngram
 
     # n-gram dict
     #  {409: 1, 1: 2, 78: 1, 11: 1, 81: 1, 210: 1, ...} ただしdefaultdictのインスタンスとして
-    I = numpy.zeros(len(ngram_dict.keys()))
-    J = numpy.array(list(ngram_dict.keys()))
-    V = numpy.array(list(ngram_dict.values()))
+    I = numpy.float64(numpy.zeros(len(ngram_dict.keys())))
+    J = numpy.float64(numpy.array(list(ngram_dict.keys())))
+    V = numpy.float64(numpy.array(list(ngram_dict.values())))
 
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.coo_matrix.html
-    vector = scipy.sparse.coo_matrix((V, (I, J)), shape=(1, len(feature_id_default_dict)))
+    vector = scipy.sparse.coo_matrix((V, (I, J)), shape=(1, len(feature_id_default_dict)), dtype='float64')
     # http://techeten.xyz/1004
-    return vector
+
+    # scipy to numpy
+    # https://stackoverflow.com/questions/26576524/how-do-i-transform-a-scipy-sparse-matrix-to-a-numpy-matrix
+    return vector.todense()
 
 def tensor_set_maker(feature_id_dict,ngram_maxnum,train_or_test_dataset_pkl_path,Entrez_gene_ontology_json_path):
     vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list = [] # [[vec_from_text,vec_from_Entrez_gene_id],[...]...]
@@ -70,7 +74,7 @@ def tensor_set_maker(feature_id_dict,ngram_maxnum,train_or_test_dataset_pkl_path
                                                                                         ngram_maxnum=ngram_maxnum,
                                                                                         feature_id_default_dict=feature_id_dict)
 
-            vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list.append([torch.tensor(vector_in_text_in_Pubtator),torch.tensor(vector_in_Entrez_gene)])
+            vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list.append([torch.as_tensor(vector_in_text_in_Pubtator),torch.as_tensor(vector_in_Entrez_gene)])
 
     return vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list
 
