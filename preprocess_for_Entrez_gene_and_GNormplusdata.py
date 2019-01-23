@@ -18,7 +18,7 @@ def many_entity_candidate_splitter(one_raw_gene_and_candidate_gene_id_set):
 
         return new_returned_set
 
-def from_Pubtatorfile_Gene_extractor(pubtator_filepath):
+def from_Pubtatorfile_Gene_extractor(pubtator_filepath,ontology_json_filepath):
     Pubtator_geneset_without_abstract = list()
 
     with open(pubtator_filepath,'r') as pf:
@@ -31,10 +31,18 @@ def from_Pubtatorfile_Gene_extractor(pubtator_filepath):
 
     new_raw_gene_in_Pubtator_and_GOid_set_list = list()
 
+    with open(ontology_json_filepath,r) as ojf:
+        ontology_json = json.load(ojf)
+
     for oneset in Pubtator_geneset_without_abstract:
         new_oneset = list()
         gene_in_text = oneset[0]
         id_of_Entrezgene = Taxid_remover(oneset[1])
+
+        ontology_ids = ontology_json.keys()
+        if id_of_Entrezgene not in ontology_ids: #if no correct ans, just ignore
+            continue
+
         new_oneset.append(gene_in_text)
         new_oneset.append(id_of_Entrezgene)
 
@@ -66,11 +74,14 @@ if __name__ =='__main__':
     Entrez_gene_id_to_gene_name_dictionary = Entrez_gene_and_gene_name_dictionary_maker(Entrez_gene_Allinfo_filepath='./dataset_dir/All_Data.gene_info')
     Pubtator_format_trainfile_filepath = './dataset_dir/GNormPlusCorpus/BC2GNtrain.PubTator.txt'
     Pubtator_format_test_file_filepath = './dataset_dir/GNormPlusCorpus/BC2GNtest.PubTator.txt'
-    train_data = from_Pubtatorfile_Gene_extractor(pubtator_filepath=Pubtator_format_trainfile_filepath)
-    test_data = from_Pubtatorfile_Gene_extractor(pubtator_filepath=Pubtator_format_test_file_filepath)
 
     with open(Entrez_gene_id_to_gene_dump_json_path,'w') as Eg:
         json.dump(Entrez_gene_id_to_gene_name_dictionary, Eg,ensure_ascii=False, indent=4)
+
+
+    train_data = from_Pubtatorfile_Gene_extractor(pubtator_filepath=Pubtator_format_trainfile_filepath,ontology_json_filepath=Entrez_gene_id_to_gene_dump_json_path)
+    test_data = from_Pubtatorfile_Gene_extractor(pubtator_filepath=Pubtator_format_test_file_filepath,ontology_json_filepath=Entrez_gene_id_to_gene_dump_json_path)
+
 
     with open('./dataset_dir/BC2GNtrain_gene.pkl','wb') as BC2tr:
         pickle.dump(train_data,BC2tr)
