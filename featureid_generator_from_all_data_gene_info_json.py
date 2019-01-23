@@ -76,11 +76,19 @@ def tensor_set_maker(feature_id_dict,ngram_minnum,ngram_maxnum,train_or_test_dat
                                                                                         ngram_maxnum=ngram_maxnum,
                                                                                         feature_id_default_dict=feature_id_dict)
 
-            vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list.append([torch.as_tensor(vector_in_text_in_Pubtator),torch.as_tensor(vector_in_Entrez_gene)])
+            vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list.append([torch.as_tensor(vector_in_text_in_Pubtator).to(device),torch.as_tensor(vector_in_Entrez_gene).to(device)])
 
     return vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list
 
 def Entrez_gene_text_id_and_tensor_set(ngram_minnum,ngram_maxnum,feature_id_dict,Entrez_gene_id_json_path):
+    '''
+    This func cant be conducted directly, cause of memory exprosion at tensor_list_of_gene
+    :param ngram_minnum:
+    :param ngram_maxnum:
+    :param feature_id_dict:
+    :param Entrez_gene_id_json_path:
+    :return:
+    '''
 
     tensor_list_of_gene = list()
     id_list = list()
@@ -94,7 +102,7 @@ def Entrez_gene_text_id_and_tensor_set(ngram_minnum,ngram_maxnum,feature_id_dict
                                                                                                      ngram_minnum=ngram_minnum,
                                                                                 ngram_maxnum=ngram_maxnum,
                                                                                 feature_id_default_dict=feature_id_dict
-                                                                                )))
+                                                                                )).to(device))
 
     return id_list, tensor_list_of_gene
 
@@ -121,7 +129,7 @@ def one_batch_loader(one_indexes_of_batch,one_tensor_from_text_and_tensor_from_c
         batched_tensor_from_text.append(one_tensor_from_text_and_tensor_from_correct_gene_set[idx][0])
         batched_tensor_from_correct_gene.append(one_tensor_from_text_and_tensor_from_correct_gene_set[idx][1])
 
-    return torch.tensor(batched_tensor_from_text), torch.tensor(batched_tensor_from_correct_gene)
+    return torch.tensor(batched_tensor_from_text).to(device), torch.tensor(batched_tensor_from_correct_gene).to(device)
 ### batch loader end
 
 ### Linear Projection model
@@ -176,10 +184,12 @@ if __name__ == '__main__':
         pickle.dump(Sorted_feature_ngram_id,ffop)
     '''
 
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
     # filepath
-    NGRAM_MINNUM = 4
+    NGRAM_MINNUM = 2
     NGRAM_MAXNUM = 4
-    MAX_FEATURE = 300000
+    MAX_FEATURE = 10000
     TRAIN_DATASET_PKL = './dataset_dir/BC2GNtrain_gene.pkl'
     TEST_DATASET_PKL = './dataset_dir/BC2GNtest_gene.pkl'
     FEATURE_ID_SORTED_DICT_PATH = './dataset_dir/feature_from_ontology_feature_300000.pkl'
@@ -213,6 +223,7 @@ if __name__ == '__main__':
                                                                                                     train_or_test_dataset_pkl_path=TRAIN_DATASET_PKL,
                                                                                                     Entrez_gene_ontology_json_path=ENTREZ_GENE_ID_JSON)
 
+    print("TRAIN  VEC TENSORIZED")
     # test tensor dataset
     test_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list = tensor_set_maker(feature_id_dict=feature_id_default_dict,
                                                                                                     ngram_minnum=NGRAM_MINNUM,
@@ -220,18 +231,18 @@ if __name__ == '__main__':
                                                                                                     train_or_test_dataset_pkl_path=TEST_DATASET_PKL,
                                                                                                     Entrez_gene_ontology_json_path=ENTREZ_GENE_ID_JSON)
 
+    print("TEST  VEC TENSORIZED")
     # loaded for test validation
-    ontology_id_list, ontology_tensor_list_of_gene = Entrez_gene_text_id_and_tensor_set(ngram_minnum=NGRAM_MINNUM,ngram_maxnum=NGRAM_MAXNUM,
-                                                                                        feature_id_dict=feature_id_default_dict,
-                                                                                        Entrez_gene_id_json_path=ENTREZ_GENE_ID_JSON)
+    # ontology makes memory explosion, so timely this is supended.
+    # ontology_id_list, ontology_tensor_list_of_gene = Entrez_gene_text_id_and_tensor_set(ngram_minnum=NGRAM_MINNUM,ngram_maxnum=NGRAM_MAXNUM,
+    #                                                                                     feature_id_dict=feature_id_default_dict,
+    #                                                                                     Entrez_gene_id_json_path=ENTREZ_GENE_ID_JSON)
 
     # dump
-    with open(FEATURE_ID_DEFAULT_DICT,'wb') as FIDD, open(TRAIN_TENSOR_DATASET,'wb') as TTD, open(TEST_TENSOR_DATASET,'wb') as TestTD, open(ONTOLOGY_ID_LIST,'wb') as OIL, open(ONTOLOGY_TENSOR_LIST_OF_GENE,'wb') as OTLOG:
-        pickle.dump(feature_id_default_dict,FIDD)
-        pickle.dump(train_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TTD)
-        pickle.dump(test_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TestTD)
-        pickle.dump(ontology_id_list,OIL)
-        pickle.dump(ontology_tensor_list_of_gene, OTLOG)
+    print("Dump start")
+    # torch.save(train_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TRAIN_TENSOR_DATASET)
+    # torch.save(test_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list,TEST_TENSOR_DATASET)
+    print("Dumped skipped")
 
     # model
     model = AffineLearner(vec_dim_init_batched=MAX_FEATURE,
