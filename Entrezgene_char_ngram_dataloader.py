@@ -45,7 +45,9 @@ def make_feature_id_dict(ngram_list_list):
     feature_id = defaultdict(lambda: len(feature_id))
     for ngram_list in ngram_list_list:
         for ngram in ngram_list:
+            print(ngram)
             feature_id[ngram]
+
     return feature_id
 
 def make_feature_ngram_list_list_from_raw_data(train_data_filepath,Entrez_gene_id2rawgene_json_filepath):
@@ -58,7 +60,7 @@ def make_feature_ngram_list_list_from_raw_data(train_data_filepath,Entrez_gene_i
         ngram_list_list.append([one_gene_in_PubTator_and_correct_Entrez_gene_id_set[0],
                                 Entrez_gene_id2raw_gene_converter(one_gene_in_PubTator_and_correct_Entrez_gene_id_set[1],
                                                                   Entrez_gene_id2rawgene_json_filepath=Entrez_gene_id2rawgene_json_filepath)])
-
+    print('len(ngram_list_list', len(ngram_list_list))
     return ngram_list_list
 
 def make_vector_from_ngram_list(feature_id, ngram_list):
@@ -116,14 +118,19 @@ def all_batch_index_returner(batch_num,train_or_test_data_filepath):
 
     return index_list_list
 
+
 if __name__ == '__main__':
     train_Data_filepath = './dataset_dir/BC2GNtrain_gene.pkl'
     Entrez_gene_id2rawgene_json_filepath = './dataset_dir/All_Data.gene_info.json'
-    feature_id_dumped_path = './dataset_dir/feature_id_dumped.pkl'
+    feature_id_dumped_path = './dataset_dir/feature_id_dumped_.pkl'
 
     # feature id is made from only train data
     feature_id = make_feature_id_dict(ngram_list_list=make_feature_ngram_list_list_from_raw_data(train_data_filepath=train_Data_filepath,
                                                                                                  Entrez_gene_id2rawgene_json_filepath=Entrez_gene_id2rawgene_json_filepath)
                                       )
+    exit()
     with open(feature_id_dumped_path,'wb') as fid:
         pickle.dump(feature_id,fid)
+
+
+    print('all_features',len(feature_id))

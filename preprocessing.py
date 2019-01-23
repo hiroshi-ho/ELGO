@@ -148,12 +148,6 @@ def when_you_input_one_wordsplited_sentence_then_return_one_intnized_sentence_an
     return intnized_sentence, intnized_char_sentence
 
 
-class PubtatorFormat_parser():
-    def __init__(self,pubtator_file_filepath):
-        self.pubtator_file_filepath = pubtator_file_filepath
-
-
-
 if __name__ == '__main__':
     dataset_dir = './dataset_dir/'
 

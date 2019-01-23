@@ -22,9 +22,9 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.multiclass import OneVsRestClassifier
 
 def Taxid_remover(one_gene_id_in_Pubtator):
-    new_id = re.sub(pattern=r'Tax:[0-9]+',repl='',string=one_gene_id_in_Pubtator)
+    new_id = re.sub(pattern='\(Tax:.*',repl='',string=one_gene_id_in_Pubtator)
     new_id = new_id.replace('()','')
-    print(new_id)
+
     return new_id
 
 def many_entity_candidate_splitter(one_raw_gene_and_candidate_gene_id_set):
@@ -36,7 +36,7 @@ def many_entity_candidate_splitter(one_raw_gene_and_candidate_gene_id_set):
         new_returned_set =list()
         for one_gene in one_gene_or_many_gene:
             new_returned_set +=[raw_gene_name_in_Pubtator_txt,one_gene]
-            print(new_returned_set)
+
         return new_returned_set
 
 def from_Pubtatorfile_Gene_extractor(pubtator_filepath):
