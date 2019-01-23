@@ -36,7 +36,7 @@ def make_feature_id_dict_from_sorted_feature_ngram_id(sorted_feature_id):
 def make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text,ngram_maxnum,feature_id_default_dict):
     ngram_dict = defaultdict(lambda:0)
     for one_ngram in ngram_char_bow_returner(one_Entrez_gene_raw_name=one_gene_raw_text,ngrammax_num=ngram_maxnum):
-        if one_ngram in feature_id_default_dict.kyes():
+        if one_ngram in feature_id_default_dict.keys():
             ngram_dict[feature_id_default_dict[one_ngram]] +=1
 
     # n-gram dict
