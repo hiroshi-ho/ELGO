@@ -76,7 +76,7 @@ def tensor_set_maker(feature_id_dict,ngram_minnum,ngram_maxnum,train_or_test_dat
                                                                                         ngram_maxnum=ngram_maxnum,
                                                                                         feature_id_default_dict=feature_id_dict)
 
-            vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list.append([torch.as_tensor(vector_in_text_in_Pubtator).to(device),torch.as_tensor(vector_in_Entrez_gene).to(device)])
+            vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list.append([torch.LongTensor(vector_in_text_in_Pubtator).to(device),torch.LongTensor(vector_in_Entrez_gene).to(device)])
 
     return vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list
 
@@ -98,7 +98,7 @@ def Entrez_gene_text_id_and_tensor_set(ngram_minnum,ngram_maxnum,feature_id_dict
 
     for Entrez_gene_id, gene_itself in Entrez_gene_id_json.items():
         id_list.append(Entrez_gene_id)
-        tensor_list_of_gene.append(torch.tensor(make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text=gene_itself,
+        tensor_list_of_gene.append(torch.LongTensor(make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text=gene_itself,
                                                                                                      ngram_minnum=ngram_minnum,
                                                                                 ngram_maxnum=ngram_maxnum,
                                                                                 feature_id_default_dict=feature_id_dict
@@ -129,7 +129,7 @@ def one_batch_loader(one_indexes_of_batch,one_tensor_from_text_and_tensor_from_c
         batched_tensor_from_text.append(one_tensor_from_text_and_tensor_from_correct_gene_set[idx][0])
         batched_tensor_from_correct_gene.append(one_tensor_from_text_and_tensor_from_correct_gene_set[idx][1])
 
-    return torch.tensor(batched_tensor_from_text).to(device), torch.tensor(batched_tensor_from_correct_gene).to(device)
+    return torch.LongTensor(batched_tensor_from_text).to(device), torch.LongTensor(batched_tensor_from_correct_gene).to(device)
 ### batch loader end
 
 ### Linear Projection model
@@ -188,8 +188,8 @@ if __name__ == '__main__':
 
     # filepath
     NGRAM_MINNUM = 2
-    NGRAM_MAXNUM = 4
-    MAX_FEATURE = 10000
+    NGRAM_MAXNUM = 3
+    MAX_FEATURE = 1000
     TRAIN_DATASET_PKL = './dataset_dir/BC2GNtrain_gene.pkl'
     TEST_DATASET_PKL = './dataset_dir/BC2GNtest_gene.pkl'
     FEATURE_ID_SORTED_DICT_PATH = './dataset_dir/feature_from_ontology_feature_300000.pkl'
@@ -205,7 +205,7 @@ if __name__ == '__main__':
     MODEL_FILEPATH = './model_data/model.model'
 
     ### model params
-    BATCH_SIZE = 30
+    BATCH_SIZE = 10
     LR = 0.5
     EPOCH_NUM = 100
     ### model params end
