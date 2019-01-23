@@ -87,4 +87,4 @@ if __name__ =='__main__':
         pickle.dump(train_data,BC2tr)
 
     with open('./dataset_dir/BC2GNtest_gene.pkl','wb') as BC2te:
-        pickle.dump(train_data,BC2te)
+        pickle.dump(test_data,BC2te)

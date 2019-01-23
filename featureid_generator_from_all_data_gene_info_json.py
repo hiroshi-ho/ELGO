@@ -181,7 +181,7 @@ def test_loss_evaluator(model,test_one_by_one_vector_set,batch_num):
         test_batched_projected_vectors = model(wrapped_test_tensor_set_from_pupator_text)
         loss_for_test_batch = model.loss_custom(projected_tensor_from_Pubtator_Text_batched=test_batched_projected_vectors,
                                                 correct_text_tensor_batched=wrapped_test_tensor_set_from_Entrez_gene)
-        test_loss_sum.append(loss_for_test_batch.data[0].cpu().numpy())
+        test_loss_sum.append(loss_for_test_batch.item())
 
     return np.mean(test_loss_sum)
 
@@ -228,9 +228,9 @@ if __name__ == '__main__':
     MODEL_FILEPATH = './model_data/model.model'
 
     ### model params
-    BATCH_SIZE = 10
-    LR = 0.5
-    EPOCH_NUM = 100
+    BATCH_SIZE = 100
+    LR = 0.01
+    EPOCH_NUM = 20
     ### model params end
 
     with open(FEATURE_ID_SORTED_DICT_PATH,'rb') as FISD:
@@ -324,6 +324,6 @@ if __name__ == '__main__':
         time_for_one_epoch = t2 - t1
         one_epoch_train_loss = loss_sum / len(batch_index_list_of_list) * BATCH_SIZE
         one_epoch_test_loss = test_loss
-        logger(logger_path=LOG_FILE,one_epoch_time=time_for_one_epoch,train_loss=loss_sum / (len(batch_index_list_of_list) * BATCH_SIZE),
+        logger(logger_path=LOG_FILE,epoch=epoch+1,one_epoch_time=time_for_one_epoch,train_loss=loss_sum / (len(batch_index_list_of_list) * BATCH_SIZE),
                test_loss=test_loss)
     torch.save(model.state_dict(),MODEL_FILEPATH)
