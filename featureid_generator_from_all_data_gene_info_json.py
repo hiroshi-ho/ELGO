@@ -283,4 +283,3 @@ if __name__ == '__main__':
         logger(logger_path=LOG_FILE,one_epoch_time=time_for_one_epoch,train_loss=loss_sum / (len(batch_index_list_of_list) * BATCH_SIZE),
                test_loss=test_loss)
     torch.save(model.state_dict(),MODEL_FILEPATH)
-

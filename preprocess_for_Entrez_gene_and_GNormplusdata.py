@@ -4,8 +4,6 @@ import pickle
 
 def Taxid_remover(one_gene_id_in_Pubtator):
     new_id = re.sub('\(Tax:.*','',one_gene_id_in_Pubtator)
-    new_id = new_id.replace('()','')
-
     return new_id
 
 def many_entity_candidate_splitter(one_raw_gene_and_candidate_gene_id_set):
@@ -35,14 +33,17 @@ def from_Pubtatorfile_Gene_extractor(pubtator_filepath):
 
     for oneset in Pubtator_geneset_without_abstract:
         new_oneset = list()
-        new_oneset.append(oneset[0])
-        new_oneset.append(Taxid_remover(oneset[1]))
-        if not ',' in oneset[1]:
+        gene_in_text = oneset[0]
+        id_of_Entrezgene = Taxid_remover(oneset[1])
+        new_oneset.append(gene_in_text)
+        new_oneset.append(id_of_Entrezgene)
+
+        if not ',' in id_of_Entrezgene:
             new_raw_gene_in_Pubtator_and_GOid_set_list.append(new_oneset)
         else:
-            candidate_gene = oneset[1].split(',')
+            candidate_gene = id_of_Entrezgene.split(',')
             for candidate in candidate_gene:
-                new_raw_gene_in_Pubtator_and_GOid_set_list.append([oneset[0],candidate])
+                new_raw_gene_in_Pubtator_and_GOid_set_list.append([gene_in_text,candidate])
 
     return new_raw_gene_in_Pubtator_and_GOid_set_list
 
