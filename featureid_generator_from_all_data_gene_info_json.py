@@ -10,14 +10,14 @@ import time
 import numpy as np
 from torch.autograd import Variable
 
-def make_ngram_from_Entrez_gene_ontology(max_feature,ngram_maxnum,Entrez_gene_ontology_json_filepath):
+def make_ngram_from_Entrez_gene_ontology(max_feature,ngram_minnum,ngram_maxnum,Entrez_gene_ontology_json_filepath):
     with open(Entrez_gene_ontology_json_filepath,'r') as Eg:
         Gene_id_and_Gene_json = json.load(Eg)
 
     feature_ngram_id = {}
 
     for one_gene in Gene_id_and_Gene_json.values():
-        ngram_feature_list = ngram_char_bow_returner(one_Entrez_gene_raw_name=one_gene,ngrammax_num=ngram_maxnum)
+        ngram_feature_list = ngram_char_bow_returner(one_Entrez_gene_raw_name=one_gene,ngram_minnum=ngram_minnum,ngrammax_num=ngram_maxnum)
         for one_feature in ngram_feature_list:
             if one_feature in feature_ngram_id:
                 feature_ngram_id[one_feature] +=1
@@ -34,17 +34,17 @@ def make_feature_id_dict_from_sorted_feature_ngram_id(sorted_feature_id):
 
     return feature_id_default_dict
 
-def make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text,ngram_maxnum,feature_id_default_dict):
+def make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text,ngram_minnum,ngram_maxnum,feature_id_default_dict):
     ngram_dict = defaultdict(lambda:0)
-    for one_ngram in ngram_char_bow_returner(one_Entrez_gene_raw_name=one_gene_raw_text,ngrammax_num=ngram_maxnum):
+    for one_ngram in ngram_char_bow_returner(one_Entrez_gene_raw_name=one_gene_raw_text,ngram_minnum=ngram_minnum,ngrammax_num=ngram_maxnum):
         if one_ngram in feature_id_default_dict.keys():
             ngram_dict[feature_id_default_dict[one_ngram]] +=1
 
     # n-gram dict
     #  {409: 1, 1: 2, 78: 1, 11: 1, 81: 1, 210: 1, ...} ただしdefaultdictのインスタンスとして
-    I = numpy.float64(numpy.zeros(len(ngram_dict.keys())))
-    J = numpy.float64(numpy.array(list(ngram_dict.keys())))
-    V = numpy.float64(numpy.array(list(ngram_dict.values())))
+    I = numpy.zeros(len(ngram_dict.keys()))
+    J = numpy.array(list(ngram_dict.keys()))
+    V = numpy.array(list(ngram_dict.values()))
 
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.coo_matrix.html
     vector = scipy.sparse.coo_matrix((V, (I, J)), shape=(1, len(feature_id_default_dict)), dtype='float64')
@@ -54,7 +54,7 @@ def make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text,ngram
     # https://stackoverflow.com/questions/26576524/how-do-i-transform-a-scipy-sparse-matrix-to-a-numpy-matrix
     return vector.todense()
 
-def tensor_set_maker(feature_id_dict,ngram_maxnum,train_or_test_dataset_pkl_path,Entrez_gene_ontology_json_path):
+def tensor_set_maker(feature_id_dict,ngram_minnum,ngram_maxnum,train_or_test_dataset_pkl_path,Entrez_gene_ontology_json_path):
     vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list = [] # [[vec_from_text,vec_from_Entrez_gene_id],[...]...]
 
     with open(Entrez_gene_ontology_json_path,'r') as Egoj:
@@ -67,10 +67,12 @@ def tensor_set_maker(feature_id_dict,ngram_maxnum,train_or_test_dataset_pkl_path
             gene_text_in_Entrez_gene = Entrez_gene_ontology_json[one_set[1]]
 
             vector_in_text_in_Pubtator = make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text=gene_text_in_Pubtator,
+                                                                                              ngram_minnum=ngram_minnum,
                                                                                               ngram_maxnum=ngram_maxnum,
                                                                                               feature_id_default_dict=feature_id_dict)
 
             vector_in_Entrez_gene = make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text=gene_text_in_Entrez_gene,
+                                                                                         ngram_minnum=ngram_minnum,
                                                                                         ngram_maxnum=ngram_maxnum,
                                                                                         feature_id_default_dict=feature_id_dict)
 
@@ -78,7 +80,7 @@ def tensor_set_maker(feature_id_dict,ngram_maxnum,train_or_test_dataset_pkl_path
 
     return vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list
 
-def Entrez_gene_text_id_and_tensor_set(ngram_maxnum,feature_id_dict,Entrez_gene_id_json_path):
+def Entrez_gene_text_id_and_tensor_set(ngram_minnum,ngram_maxnum,feature_id_dict,Entrez_gene_id_json_path):
 
     tensor_list_of_gene = list()
     id_list = list()
@@ -89,6 +91,7 @@ def Entrez_gene_text_id_and_tensor_set(ngram_maxnum,feature_id_dict,Entrez_gene_
     for Entrez_gene_id, gene_itself in Entrez_gene_id_json.items():
         id_list.append(Entrez_gene_id)
         tensor_list_of_gene.append(torch.tensor(make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text=gene_itself,
+                                                                                                     ngram_minnum=ngram_minnum,
                                                                                 ngram_maxnum=ngram_maxnum,
                                                                                 feature_id_default_dict=feature_id_dict
                                                                                 )))
@@ -174,7 +177,8 @@ if __name__ == '__main__':
     '''
 
     # filepath
-    NGRAM_MAXNUM = 5
+    NGRAM_MINNUM = 4
+    NGRAM_MAXNUM = 4
     MAX_FEATURE = 300000
     TRAIN_DATASET_PKL = './dataset_dir/BC2GNtrain_gene.pkl'
     TEST_DATASET_PKL = './dataset_dir/BC2GNtest_gene.pkl'
@@ -200,21 +204,24 @@ if __name__ == '__main__':
         sorted_feature_id_set_list = pickle.load(FISD)
 
     feature_id_default_dict = make_feature_id_dict_from_sorted_feature_ngram_id(sorted_feature_id=sorted_feature_id_set_list)
+    # print(len(feature_id_default_dict))
 
     # train tensor dataset
     train_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list = tensor_set_maker(feature_id_dict=feature_id_default_dict,
+                                                                                                       ngram_minnum=NGRAM_MINNUM,
                                                                                                     ngram_maxnum=NGRAM_MAXNUM,
                                                                                                     train_or_test_dataset_pkl_path=TRAIN_DATASET_PKL,
                                                                                                     Entrez_gene_ontology_json_path=ENTREZ_GENE_ID_JSON)
 
     # test tensor dataset
     test_vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list = tensor_set_maker(feature_id_dict=feature_id_default_dict,
+                                                                                                    ngram_minnum=NGRAM_MINNUM,
                                                                                                     ngram_maxnum=NGRAM_MAXNUM,
                                                                                                     train_or_test_dataset_pkl_path=TEST_DATASET_PKL,
                                                                                                     Entrez_gene_ontology_json_path=ENTREZ_GENE_ID_JSON)
 
     # loaded for test validation
-    ontology_id_list, ontology_tensor_list_of_gene = Entrez_gene_text_id_and_tensor_set(ngram_maxnum=NGRAM_MAXNUM,
+    ontology_id_list, ontology_tensor_list_of_gene = Entrez_gene_text_id_and_tensor_set(ngram_minnum=NGRAM_MINNUM,ngram_maxnum=NGRAM_MAXNUM,
                                                                                         feature_id_dict=feature_id_default_dict,
                                                                                         Entrez_gene_id_json_path=ENTREZ_GENE_ID_JSON)
 

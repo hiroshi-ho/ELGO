@@ -23,11 +23,11 @@ def Entrez_gene_id2raw_gene_converter(one_Entrez_gene_id,Entrez_gene_id2rawgene_
 
     return json_loaded[one_Entrez_gene_id]
 
-def ngram_char_bow_returner(one_Entrez_gene_raw_name,ngrammax_num):
+def ngram_char_bow_returner(one_Entrez_gene_raw_name,ngram_minnum,ngrammax_num):
 
     to_be_returned_list = list()
 
-    for i in range(1,ngrammax_num+1):
+    for i in range(ngram_minnum,ngrammax_num+1):
         try :
             for x in range(len(one_Entrez_gene_raw_name)):
                 if len(one_Entrez_gene_raw_name) + 1 >= x:

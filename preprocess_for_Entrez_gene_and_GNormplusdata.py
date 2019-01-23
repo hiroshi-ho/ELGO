@@ -31,7 +31,7 @@ def from_Pubtatorfile_Gene_extractor(pubtator_filepath,ontology_json_filepath):
 
     new_raw_gene_in_Pubtator_and_GOid_set_list = list()
 
-    with open(ontology_json_filepath,r) as ojf:
+    with open(ontology_json_filepath,'r') as ojf:
         ontology_json = json.load(ojf)
 
     for oneset in Pubtator_geneset_without_abstract:
