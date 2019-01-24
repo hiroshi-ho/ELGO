@@ -5,7 +5,11 @@ Entity linking with ~~Gene ontology~~ Entrez Gene
 
 # Feature
 
-* N-gram string feature to deal with orthographical variants.
+* N-gram string feature to deal with orthographical variants. 
+* Reference [paper](http://aclweb.org/anthology/P18-1010) @ Supplement A.5.1 `csim`
+
+# Model
+* Autoencoder
 
 # How to reproduce result
  

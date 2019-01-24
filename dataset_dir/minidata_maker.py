@@ -1,6 +1,6 @@
 L_num=1000
 
-with open('minidata','w') as m, open('go.obo', 'r') as go:
+with open('minidataAll_Data.gene_info','w') as m, open('All_Data.gene_info', 'r') as go:
     counter = 0
     for line in go:
         m.write(line)
