@@ -32,7 +32,7 @@ def make_ngram_from_Entrez_gene_ontology(max_feature,ngram_minnum,ngram_maxnum,E
 
         feature_generated_process += 1
         progress_percent = math.floor(feature_generated_process / len(Gene_id_and_Gene_json))
-        if int(progress_percent) % 5 == 0:
+        if int(progress_percent) % 5 == 0 and int(progress_percent) != 0:
             print('feature generation process %:',progress_percent)
 
     sorted_feature_ngram_id = sorted(feature_ngram_id.items(), key=lambda x: -x[1])[0:max_feature]
@@ -202,19 +202,19 @@ def logger(logger_path,epoch,one_epoch_time,train_loss,test_loss):
 if __name__ == '__main__':
     NGRAM_MINNUM = 2
     NGRAM_MAXNUM = 3
-    MAX_FEATURE = 10000
-    FEATURE_ID_SORTED_DICT_PATH = './dataset_dir/feature_from_ontology_feature_10000.pkl'
+    MAX_FEATURE = 300000
+    FEATURE_ID_SORTED_DICT_PATH = './dataset_dir/feature_from_ontology_feature_300000.pkl'
     Entrez_gene_ontology_json_filepath = './dataset_dir/All_Data.gene_info.json'
 
 
-    ## when feature is already exist, just commentout
-    # Sorted_feature_ngram_id = make_ngram_from_Entrez_gene_ontology(max_feature=MAX_FEATURE,
-    #                                                                ngram_minnum=NGRAM_MINNUM,
-    #                                                                ngram_maxnum=NGRAM_MAXNUM,
-    #                                                                Entrez_gene_ontology_json_filepath=Entrez_gene_ontology_json_filepath)
-    #
-    # with open(FEATURE_ID_SORTED_DICT_PATH,'wb') as ffop:
-    #     pickle.dump(Sorted_feature_ngram_id,ffop)
+    # when feature is already exist, just commentout
+    Sorted_feature_ngram_id = make_ngram_from_Entrez_gene_ontology(max_feature=MAX_FEATURE,
+                                                                   ngram_minnum=NGRAM_MINNUM,
+                                                                   ngram_maxnum=NGRAM_MAXNUM,
+                                                                   Entrez_gene_ontology_json_filepath=Entrez_gene_ontology_json_filepath)
+
+    with open(FEATURE_ID_SORTED_DICT_PATH,'wb') as ffop:
+        pickle.dump(Sorted_feature_ngram_id,ffop)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -236,7 +236,7 @@ if __name__ == '__main__':
 
     ### model params
     BATCH_SIZE = 20
-    LR = 0.001
+    LR = 0.0001
     EPOCH_NUM = 200
     COMPRESSED_DIM = 300
     ### model params end
