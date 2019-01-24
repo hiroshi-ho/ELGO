@@ -31,7 +31,7 @@ def make_ngram_from_Entrez_gene_ontology(max_feature,ngram_minnum,ngram_maxnum,E
                 feature_ngram_id[one_feature] = 1
 
         feature_generated_process += 1
-        progress_percent = math.floor(feature_generated_process / len(Gene_id_and_Gene_json))
+        progress_percent = math.floor(feature_generated_process / len(Gene_id_and_Gene_json) * 100)
         if int(progress_percent) % 5 == 0 and int(progress_percent) != 0:
             print('feature generation process %:',progress_percent)
 
@@ -202,7 +202,7 @@ def logger(logger_path,epoch,one_epoch_time,train_loss,test_loss):
 if __name__ == '__main__':
     NGRAM_MINNUM = 2
     NGRAM_MAXNUM = 3
-    MAX_FEATURE = 300000
+    MAX_FEATURE = 30000
     FEATURE_ID_SORTED_DICT_PATH = './dataset_dir/feature_from_ontology_feature_300000.pkl'
     Entrez_gene_ontology_json_filepath = './dataset_dir/All_Data.gene_info.json'
 
