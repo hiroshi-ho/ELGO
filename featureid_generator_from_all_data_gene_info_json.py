@@ -26,7 +26,7 @@ def make_ngram_from_Entrez_gene_ontology(max_feature,ngram_minnum,ngram_maxnum,E
 
         for one_feature in ngram_feature_list:
             if one_feature in feature_ngram_id:
-                feature_ngram_id[one_feature] +=1
+                feature_ngram_id[one_feature] = 1 # to prevent vector explosion
             else:
                 feature_ngram_id[one_feature] = 1
 
@@ -63,7 +63,7 @@ def make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text,ngram
 
     # scipy to numpy
     # https://stackoverflow.com/questions/26576524/how-do-i-transform-a-scipy-sparse-matrix-to-a-numpy-matrix
-    return torch.tensor(preprocessing.normalize(vector, norm='l2').todense()).view(-1).squeeze().numpy()
+    return torch.tensor(vector.todense()).view(-1).squeeze().numpy()
 
 def tensor_set_maker(feature_id_dict,ngram_minnum,ngram_maxnum,train_or_test_dataset_pkl_path,Entrez_gene_ontology_json_path):
     vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list = [] # [[vec_from_text,vec_from_Entrez_gene_id],[...]...]
@@ -167,9 +167,11 @@ class AffineLearner(nn.Module):
 
     def loss_custom(self,projected_tensor_from_Pubtator_Text_batched,correct_text_tensor_batched):
         # https://pytorch.org/docs/stable/torch.html?highlight=torch%20bmm#torch.bmm
-        projected_tensor_from_Pubtator_Text_batched = projected_tensor_from_Pubtator_Text_batched.view(self.batch_size,1,-1).float()
-        correct_text_tensor_batched = correct_text_tensor_batched.view(self.batch_size,-1,1).float()
-        ce_loss = - torch.sum(torch.bmm(projected_tensor_from_Pubtator_Text_batched,correct_text_tensor_batched)).float()
+        # https://pytorch.org/docs/master/nn.html#torch.nn.PairwiseDistance
+
+        projected_tensor_from_Pubtator_Text_batched = projected_tensor_from_Pubtator_Text_batched.view(self.batch_size,-1).float()
+        correct_text_tensor_batched = correct_text_tensor_batched.view(self.batch_size,-1).float()
+        ce_loss = - torch.sum(F.pairwise_distance(projected_tensor_from_Pubtator_Text_batched, correct_text_tensor_batched,p=2,eps=1e-8,keepdim=True)).float()
 
         return ce_loss
 
@@ -235,7 +237,7 @@ if __name__ == '__main__':
 
     ### model params
     BATCH_SIZE = 100
-    LR = 0.5
+    LR = 0.1
     EPOCH_NUM = 200
     ### model params end
 
