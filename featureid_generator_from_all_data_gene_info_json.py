@@ -9,6 +9,7 @@ import torch.optim as optim
 import time, math
 import numpy as np
 from torch.autograd import Variable
+from sklearn import preprocessing
 
 def make_ngram_from_Entrez_gene_ontology(max_feature,ngram_minnum,ngram_maxnum,Entrez_gene_ontology_json_filepath):
     with open(Entrez_gene_ontology_json_filepath,'r') as Eg:
@@ -62,7 +63,7 @@ def make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text,ngram
 
     # scipy to numpy
     # https://stackoverflow.com/questions/26576524/how-do-i-transform-a-scipy-sparse-matrix-to-a-numpy-matrix
-    return torch.tensor(vector.todense()).view(-1).squeeze().numpy()
+    return torch.tensor(preprocessing.normalize(vector, norm='l2').todense()).view(-1).squeeze().numpy()
 
 def tensor_set_maker(feature_id_dict,ngram_minnum,ngram_maxnum,train_or_test_dataset_pkl_path,Entrez_gene_ontology_json_path):
     vector_from_in_Pubtator_text_and_correct_vector_from_Entrez_gene_set_list = [] # [[vec_from_text,vec_from_Entrez_gene_id],[...]...]
