@@ -235,10 +235,10 @@ if __name__ == '__main__':
     MODEL_FILEPATH = './model_data/model.model'
 
     ### model params
-    BATCH_SIZE = 100
-    LR = 0.05
+    BATCH_SIZE = 20
+    LR = 0.001
     EPOCH_NUM = 200
-    COMPRESSED_DIM =300
+    COMPRESSED_DIM = 300
     ### model params end
 
     with open(FEATURE_ID_SORTED_DICT_PATH,'rb') as FISD:
