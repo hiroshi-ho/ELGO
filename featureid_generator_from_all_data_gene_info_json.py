@@ -26,7 +26,7 @@ def make_ngram_from_Entrez_gene_ontology(max_feature,ngram_minnum,ngram_maxnum,E
 
         for one_feature in ngram_feature_list:
             if one_feature in feature_ngram_id:
-                feature_ngram_id[one_feature] = 1 # to prevent vector explosion
+                feature_ngram_id[one_feature] = +1
             else:
                 feature_ngram_id[one_feature] = 1
 
@@ -49,7 +49,7 @@ def make_one_feature_vector_from_one_gene_and_feature_id(one_gene_raw_text,ngram
     ngram_dict = defaultdict(lambda:0)
     for one_ngram in ngram_char_bow_returner(one_Entrez_gene_raw_name=one_gene_raw_text,ngram_minnum=ngram_minnum,ngrammax_num=ngram_maxnum):
         if one_ngram in feature_id_default_dict.keys():
-            ngram_dict[feature_id_default_dict[one_ngram]] +=1
+            ngram_dict[feature_id_default_dict[one_ngram]] = 1 # to prevent vector explosion
 
     # n-gram dict
     #  {409: 1, 1: 2, 78: 1, 11: 1, 81: 1, 210: 1, ...} ただしdefaultdictのインスタンスとして
