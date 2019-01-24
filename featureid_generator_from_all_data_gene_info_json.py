@@ -150,18 +150,18 @@ def one_batch_loader(one_indexes_of_batch,one_tensor_from_text_and_tensor_from_c
 ### Linear Projection model
 class AffineLearner(nn.Module):
 
-    def __init__(self,vec_dim_init_batched,vec_dim_projected_batched,batch_size):
+    def __init__(self,vec_dim_init_batched,compressed_dim_after_encoding,batch_size):
         super(AffineLearner,self).__init__()
         self.batch_size = batch_size
-        self.fc = nn.Linear(vec_dim_init_batched,vec_dim_projected_batched)
-        self.after_tanh_fc = nn.Linear(vec_dim_init_batched,vec_dim_projected_batched)
+        self.fc = nn.Linear(vec_dim_init_batched,compressed_dim_after_encoding)
+        self.after_fc = nn.Linear(compressed_dim_after_encoding,vec_dim_init_batched)
+        self.sigmoid = nn.Sigmoid()
 
         self.feature_vec_dim = vec_dim_init_batched
 
     def forward(self, to_be_projected_vector):
         projected = self.fc(to_be_projected_vector.float()).float()
-        Nonlinear_tensor = F.tanh(projected)
-        projected = self.after_tanh_fc(Nonlinear_tensor)
+        projected = self.after_fc(projected)
 
         return projected
 
@@ -207,7 +207,6 @@ if __name__ == '__main__':
     Entrez_gene_ontology_json_filepath = './dataset_dir/All_Data.gene_info.json'
 
 
-
     ## when feature is already exist, just commentout
     # Sorted_feature_ngram_id = make_ngram_from_Entrez_gene_ontology(max_feature=MAX_FEATURE,
     #                                                                ngram_minnum=NGRAM_MINNUM,
@@ -237,8 +236,9 @@ if __name__ == '__main__':
 
     ### model params
     BATCH_SIZE = 100
-    LR = 0.1
+    LR = 0.05
     EPOCH_NUM = 200
+    COMPRESSED_DIM =300
     ### model params end
 
     with open(FEATURE_ID_SORTED_DICT_PATH,'rb') as FISD:
@@ -277,7 +277,7 @@ if __name__ == '__main__':
 
     # model
     model = AffineLearner(vec_dim_init_batched=MAX_FEATURE,
-                          vec_dim_projected_batched=MAX_FEATURE,
+                          compressed_dim_after_encoding=COMPRESSED_DIM,
                           batch_size=BATCH_SIZE)
 
     model = model.to(device=device)
