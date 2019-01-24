@@ -154,10 +154,15 @@ class AffineLearner(nn.Module):
         super(AffineLearner,self).__init__()
         self.batch_size = batch_size
         self.fc = nn.Linear(vec_dim_init_batched,vec_dim_projected_batched)
+        self.after_tanh_fc = nn.Linear(vec_dim_init_batched,vec_dim_projected_batched)
+
         self.feature_vec_dim = vec_dim_init_batched
 
     def forward(self, to_be_projected_vector):
         projected = self.fc(to_be_projected_vector.float()).float()
+        Nonlinear_tensor = F.tanh(projected)
+        projected = self.after_tanh_fc(Nonlinear_tensor)
+
         return projected
 
     def loss_custom(self,projected_tensor_from_Pubtator_Text_batched,correct_text_tensor_batched):
