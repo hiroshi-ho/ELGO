@@ -21,7 +21,7 @@ def GOprocessor(go_obo_filepath):
                 if 'id' not in one_gene_data:
                     continue
 
-                GO_json.update({one_gene_data['id'] : one_gene_data})
+                GO_json.update({int(len(GO_json)) : one_gene_data})
 
                 one_gene_data = {'synonym': [],
                                  'is_a': [],
@@ -63,7 +63,7 @@ def GOprocessor(go_obo_filepath):
 
 
         if len(one_gene_data) != 0:
-            GO_json.update({one_gene_data['id'] : one_gene_data})
+            GO_json.update({int(len(GO_json)) : one_gene_data})
 
     return GO_json, another_tag
 
